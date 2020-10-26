@@ -1,65 +1,30 @@
-# 手順書
-## line-bot-apiインストール
-gemファイルの最後尾に以下を記述
-```
-gem 'line-bot-api'
-```
+# 手順
 
-以下のコマンドを実行
-```
-bundle install
-```
+## 楽天APIの利用登録
+アプリURLは一旦ngrokのURLを登録
+herokuへデプロイ時にURL変える
 
-数行表示されたあとに`Bundle complete!・・・`と表示されていれば成功
+## 取得したアプリIDを環境変数に登録
+`.env`
 
-```
-・
-・
-・
-Fetching line-bot-api 1.16.0
-Installing line-bot-api 1.16.0
-・
-・
-・
-Bundle complete! 14 Gemfile dependencies, 64 gems now installed.
-Bundled gems are installed into `./vendor/bundle`
-```
-
-## lineBotコントローラ作成
-rails generate controller LineBot
-
-確認：App/controller/line_bot_controller 作成されていればOK
-
-## callbackアクションの作成
-
-以下を記載
 ```diff
-class LinebotController < ApplicationController
-+  def callback
-+  end
-end
+LINE_CHANNEL_SECRET='xxxxxx'
+LINE_CHANNEL_TOKEN='xxxxxx'
++ RAKUTEN_APPID='xxxxxx'
 ```
 
-## ルーティングを定義
-以下を記載
+## HTTPClientのインストール
+ネットワーク通信を取り扱うライブラリで、Rubyが標準で取り込んでいる同様のライブラリ`net/http` よりも取り扱いやすいライブラリとなっています。
+
+Gemfileに以下を追記
+
 ```diff
-Rails.application.routes.draw do
--  # For details on the DSL available within this file, see http://guides.rubyonrails.org/routing.html
-+  post '/callback' => 'linebot#callback'
-end
-```
-
-## ngrokインストール
-[laravelの教材参照](https://github.com/Techpit-Market/laravel-linebot/blob/master/curriculum/2%E7%AB%A0%EF%BC%9ALINE%20Messaging%20API%E3%81%A8%E9%80%A3%E6%90%BA%E3%81%97%E3%81%A6%E3%82%AA%E3%82%A6%E3%83%A0%E8%BF%94%E3%81%97Bot%E3%82%92%E4%BD%9C%E3%82%8D%E3%81%86/2-6%20%E9%96%8B%E7%99%BA%E7%92%B0%E5%A2%83%E3%81%AELaravel%E3%82%92%E4%B8%80%E6%99%82%E7%9A%84%E3%81%AB%E5%A4%96%E9%83%A8%E3%81%8B%E3%82%89%E9%80%9A%E4%BF%A1%E3%81%A7%E3%81%8D%E3%82%8B%E3%82%88%E3%81%86%E3%81%AB%E3%81%99%E3%82%8B.md)
-
-ngrokで公開してアクセスしてrailsの初期画面表示
-
-
-## 環境変数の設定
-### gem 'dotenv-rails' のインストール
-`Gemfile`に以下記載
-```
+・
+・
+・
 gem 'dotenv-rails'
+
++ gem 'httpclient'
 ```
 
 ```
@@ -70,391 +35,358 @@ $ bundle install
 ・
 ・
 ・
-Fetching dotenv 2.7.6
-Installing dotenv 2.7.6
+Fetching httpclient 2.8.3
+Installing httpclient 2.8.3
 ・
 ・
 ・
-Fetching dotenv-rails 2.7.6
-Installing dotenv-rails 2.7.6
-・
-・
-・
-Bundle complete! 15 Gemfile dependencies, 66 gems now installed.
+Bundle complete! 16 Gemfile dependencies, 67 gems now installed.
 Bundled gems are installed into `./vendor/bundle`
 ```
 
-### .envファイルを作成
-プロジェクトのルートディレクトリに作成
-```
-$ touch .env
-```
-
-### 環境変数を設定
-作成した.envファイルに環境変数を記述します。
-
-```
-LINE_CHANNEL_SECRET='xxxxxxxx'
-LINE_CHANNEL_TOKEN='xxxxxxxx'
-```
-
-### .gitignoreに.envを追加
-最後尾に以下追加
-```
-/.env
-```
-
-### 認証情報を設定
-
-LINE Messaging API SDKには、Botとして様々な処理を行うための、`Line::Bot::Client`クラスが用意されています。
-
-> クラスの入れ子についてはRubyの範囲なので説明しない方向
-https://qiita.com/noraworld/items/947f6725a4d617820265
-
-`Line::Bot::Client`クラスをインスタンス化するために以下のコードを追加
+## APIリクエストの準備
 
 ```diff
 class LineBotController < ApplicationController
-+  private
-+
-+    def client
-+      @client ||= Line::Bot::Client.new { |config|
-+        config.channel_secret = ENV["LINE_CHANNEL_SECRET"]
-+        config.channel_token = ENV["LINE_CHANNEL_TOKEN"]
+  ・
+  ・
+  ・
+  private
+    ・
+    ・
+    ・
++    def search_and_create_message(keyword)
++      url = 'https://app.rakuten.co.jp/services/api/Travel/KeywordHotelSearch/20170426'
++      client = HTTPClient.new
++      query = { 
++        'keyword' => keyword,
++        'applicationId' => ENV['RAKUTEN_APPID'],
++        'responseType' => 'small',
++        'hits' => 5,
++        'formatVersion' => 2
 +      }
 +    end
 end
 ```
 
-`ENV["xxx"]`が使われていますが、これは.envファイルの中で指定した変数名の値が返ります(あるいはPCやサーバーに設定された環境変数の値が返ります)。
+```
+def search_and_create_message(keyword)
+```
+引数としてユーザーから送信されたテキストを受け取り、これをキーワードに宿泊検索をします。
 
-2-4 アクセストークンの設定では、.envファイルに`LINE_CHANNEL_SECRET`と`LINE_CHANNEL_TOKEN`を設定しました。その値が返るというわけです。
+```
+url = 'https://app.rakuten.co.jp/services/api/Travel/KeywordHotelSearch/20170426'
+```
 
-それ以外の追加コードに関しては「LINEBotクラスを生成するにはこのような手順となっているんだ」ぐらいに思ってもらえれば大丈夫です。
+楽天トラベルキーワード検索APIにリクエストするためのURLを`url`に代入しています。
 
-## セキュリティの無効化
-### CSRF対策無効化
+```
+client = HTTPClient.new
+```
 
-`line_bot_controller.rb`
+`HTTPClient`クラスを生成(インスタンス化)し、`client`に代入しています。
+
+この`client`で`get`メソッドを使うと、指定したURLに対してGETリクエストを行い、そのレスポンスが返ってきます。
+
+```
+query = {
+  'keyword' => keyword,
+  'hits' => 5,
+  'responseType' => 'small',
+  'formatVersion' => 2,
+  'applicationId' => ENV['RAKUTEN_APPID']
+}
+```
+
+リクエストパラメーターとは
+
+検索キーワードなど、サーバーに送信したいデータをURLの末尾に特定の形式で表記したもの
+
+URLの末尾に「?」（クエスチョンマーク）を付け、続けて「名前=値」の形式で内容を記述する。値が複数あるときは「&」（アンパサンド）で区切り、「?名前1=値1&名前2=値2&名前3=値3」のように続ける
+
+ここでは`keyword`、`hits`、`responseType`、`formatVersion`、`applicationId`をリクエストパラメータとして指定しています。
+
+|パラメーター|意味|今回設定する値|
+|--|--|--|
+|keyword| 検索キーワード  |{ユーザーから送信されたテキスト}|
+| hits  | 取得件数  |5|
+| responseType  | 取得する情報量の度合い  |small(施設情報のみ)|
+|formatVersion   | 出力フォーマットのバージョン指定 |2(詳細は下記リンク参照)|
+|applicationId   | APIを利用するためのID  |{API利用登録で取得した値}|
+
+詳細は以下の「入力パラメーター」の項で確認できます。
+
+[楽天ウェブサービス: 楽天トラベルキーワード検索API(version:2017-04-26) | API一覧](https://webservice.rakuten.co.jp/api/keywordhotelsearch/)
+
+## リクエスト
 
 ```diff
 class LineBotController < ApplicationController
-+  protect_from_forgery except: [:callback]
-+
+  ・
+  ・
+  ・
   private
-  ・
-  ・
-  ・
-end
-```
-
-### ホスト名をホワイトリストに登録
-
-Rails6ではDNS Rebuilding攻撃を防ぐためにホスト名をホワイトリストに登録しなければならない。
-
-今回は便宜上、全てのホスト名でアクセス可能の設定をする。
-
-`development.rb`
-
-最後尾に以下追加
-
-```
-Rails.application.configure do
-・
-・
-・
-+  config.hosts.clear
-end
-```
-
-## POSTリクエストの確認
-
-`line_bot_controller.rb`
-
-```
-class LineBotController < ApplicationController
-  protect_from_forgery except: [:callback]
-
-+  def callback
-+  end
-
-  ・
-  ・
-  ・
-end
-```
-
-rails server を立ち上げているターミナルを確認するとLINEチャネルからのPOSTリクエストが確認できる。
-
-```
-Parameters: {"events"=>[{"type"=>"message", "replyToken"=>"xxx", "source"=>{"userId"=>"xxx", "type"=>"user"}, "timestamp"=>1603537341048, "mode"=>"active", "message"=>{"type"=>"text", "id"=>"xxx", "text"=>"テスト"}}], "destination"=>"xxx", "line_bot"=>{"events"=>[{"type"=>"message", "replyToken"=>"xxx", "source"=>{"userId"=>"xxx", "type"=>"user"}, "timestamp"=>1603537341048, "mode"=>"active", "message"=>{"type"=>"text", "id"=>"xxx", "text"=>"テスト"}}], "destination"=>"xxx"}}
-```
-
-## メッセージボディを取得
-
-`line_bot_controller.rb`
-
-```diff
-class LineBotController < ApplicationController
-  protect_from_forgery except: [:callback]
-
-  def callback
-+    body = request.body.read
-+    p body
-  end
-
-  ・
-  ・
-  ・
-end
-```
-
-POSTリクエストは`request`に渡ってくる。
-
-リクエストを構成する要素に、ヘッダーとメッセージボディというものがありますが、`request.body`はメッセージボディ、`request.env`にはヘッダーが返される。
-
-rails server を立ち上げているターミナルを確認するとPOSTリクエストからメッセージボディを文字列として取得できていることがわかる。
-
-```
-"{\"events\":[{\"type\":\"message\",\"replyToken\":\"xxx\",\"source\":{\"userId\":\"xxx\",\"type\":\"user\"},\"timestamp\":1603539210962,\"mode\":\"active\",\"message\":{\"type\":\"text\",\"id\":\"xxx\",\"text\":\"んん\"}}],\"destination\":\"xxx\"}"
-"xxxf"
-```
-
-## 署名の検証をおこなう
-
-LINEチャネルのような外部APIとの通信において、セキュリティ的に気をつけておくべき事項の中に以下の2点が挙げられます。
-
-他人が作ったLINEチャネルや、LINEチャネルを装った全く別のサーバーと通信してしまうリスク
-
-あなたのLINEチャネルからのリクエストの中身が、Laravelに届くまでの間に第三者に改ざんされてしまうリスク
-
-LINEチャネルからのリクエストには署名(signature)の情報が含まれており、これを検証することで上記のリスクへの対策となります。
-
-署名を検証する機能はSDKに用意されているので、これを利用しましょう。
-
-`line_bot_controller.rb`
-
-```diff
-class LineBotController < ApplicationController
-  protect_from_forgery except: [:callback]
-
-  def callback
-    body = request.body.read
--    p body
-+    signature = request.env['HTTP_X_LINE_SIGNATURE']
-+    unless client.validate_signature(body, signature)
-+      error 400 do 'Bad Request' end
-+    end
-  end
-
-  ・
-  ・
-  ・
-end
-
-```
-
-```
-signature = request.env['HTTP_X_LINE_SIGNATURE']
-```
-
-リクエストのヘッダーである`request.env`の'HTTP_X_LINE_SIGNATURE'をキーとする値を`signature`に代入している。
-
-```
-unless client.validate_signature(body, signature)
-  return head :bad_request
-end
-```
-
-`validate_signature`メソッドは、メッセージボディと署名を引数として受け取り、署名の検証を行います。
-
-メッセージボディは文字列で渡す必要があるため、`request.body.read`として文字列で取得していた。
-
-次に署名の検証についてです。
-
-署名の検証には鍵情報(LINE_CHANNEL_SECRET)も必要ですが、引数として渡してはいません。
-
-これはメソッドの呼び出し元の`client`が既にその情報を持っており、メソッド内部でそれが使われているためとなります。
-
-署名の検証結果はtrueかfalseで返ります。
-
-`head`メソッドはステータスコードを返したいときに使う。
-
-`:bad_request`を指定すると`400`が返される。
-
-ステータスコードについては以下参照
-
-[HTTP レスポンスステータスコード - HTTP | MDN](https://developer.mozilla.org/ja/docs/Web/HTTP/Status)
-
-
-LINE側が送ってきたメッセージが正しいか検証するための署名参考
-
-[メッセージ（Webhook）を受信する | LINE Developers](https://developers.line.biz/ja/docs/messaging-api/receiving-messages/#verifying-signatures)
-
-## LINEのチャネルに返信する
-
-### メッセージボディを配列で取得
-
-`line_bot_controller.rb`
-
-```diff
-class LineBotController < ApplicationController
-  protect_from_forgery except: [:callback]
-
-  def callback
-    body = request.body.read
-    signature = request.env['HTTP_X_LINE_SIGNATURE']
-    unless client.validate_signature(body, signature)
-      error 400 do 'Bad Request' end
+    ・
+    ・
+    ・
+    def search_and_create_message(keyword)
+      url = 'https://app.rakuten.co.jp/services/api/Travel/KeywordHotelSearch/20170426'
+      client = HTTPClient.new
+      query = { 
+        'keyword' => keyword,
+        'applicationId' => ENV['RAKUTEN_APPID'],
+        'responseType' => 'small',
+        'hits' => 5,
+        'formatVersion' => 2
+      }
++      response = client.get(url, query)
++      response = JSON.parse(response.body)
     end
-+    events = client.parse_events_from(body)
-  end
-
-  ・
-  ・
-  ・
-end
-```
-
-`parse_events_from`メソッドに文字列として取得していたメッセージボディである`body`を引数として渡すと、配列に変換して返してくれる。
-
-### メッセージボディの解析
-
-まずはメッセージボディから送信されてきたテキストを取り出すため、解析をおこないます。
-
-`line_bot_controller.rb`
-
-```diff
-class LineBotController < ApplicationController
-
-  protect_from_forgery except: [:callback]
-
-  def callback
-    ・
-    ・
-    ・
-    events = client.parse_events_from(body)
-+    events.each do |event|
-+      case event
-+      when Line::Bot::Event::Message
-+        case event.type
-+        when Line::Bot::Event::MessageType::Text
-+        end
-+      end
-+    end
-  end
-
-  ・
-  ・
-  ・
 end
 ```
 
 ```
-events.each do |event|
-・
-・
-・
-end
+response = client.get(url, query)
 ```
 
-メッセージボディを配列にした`events`変数を`each`メソッドを用いてループさせ、各要素を`event`変数として扱います。
+`get`メソッドの第一引数には、リクエスト先のURLを渡します。
+
+第二引数には、リクエストパラメータとなる情報をハッシュで渡します。
+
+APIへのGETリクエストに対するレスポンスを`response`に代入しています。
 
 ```
-  case event
-  when Line::Bot::Event::Message
-    ・
-    ・
-    ・
-  end
+response = JSON.parse(response.body)
 ```
 
-`case`文を用いて`event`が`Line::Bot::Event::Message`クラスかどうか、つまりユーザーがメッセージを送信したことを示すイベント(メッセージイベント)かどうかを確認します。
+レスポンスは以下の要素で成り立っています。
 
-他のイベントで例を上げると、LINE Botがメンバーになっているグループやトークルームにユーザーが参加したことを示すイベントなどがあります。
+1. ステータスライン
+1. レスポンスヘッダ
+1. レスポンスボディ
 
-詳しくは下記を参照してください。
+このうち、リクエストした側が必要な情報(今回は宿泊施設の情報)はレスポンスボディにあります。
 
-[メッセージ（Webhook）を受信する | LINE Developers](https://developers.line.biz/ja/docs/messaging-api/receiving-messages/#webhook-event-types)
+レスポンスボディに関しては、以下の記事がわかりやすいので参考にしてみてください。
 
+[HTTPレスポンスボディとは](https://wa3.i-3-i.info/word1848.html)
+
+`body`メソッドを利用することで、レスポンスボディにアクセスすることができます。
+
+レスポンスは以下のようなJSONという形式の文字列となっています。
 
 ```
-    case event.type
-    when Line::Bot::Event::MessageType::Text
-    end
-```
-
-次に`event`の`type`プロパティが`Line::Bot::Event::MessageType::Text`クラスかどうか、つまりメッセージがテキストかどうかを確認します。
-
-テキスト以外では、例えばスタンプの場合は`sticker`、画像の場合は`image`となります。
-
-詳しくは下記を参照してください。
-
-[Messaging APIリファレンス | LINE Developers](https://developers.line.biz/ja/reference/messaging-api/#message-event)
-
-ここまででメッセージボディの解析が完了し、送られてきたメッセージがテキストであることが確認できました。
-
-### 返信メッセージの作成
-
-続いて、返信メッセージを作成します。
-
-返信メッセージは送信されてきたメッセージと同様にメッセージタイプとテキストをハッシュで作成します。
-
-`line_bot_controller.rb`
-
-```diff
-class LineBotController < ApplicationController
-  protect_from_forgery except: [:callback]
-
-  def callback
+{
+  "pagingInfo":
+  {
+    "recordCount":894,
     ・
     ・
     ・
-    events.each do |event|
-      case event
-      when Line::Bot::Event::Message
-        case event.type
-        when Line::Bot::Event::MessageType::Text
-+          message = {
-+            type: 'text',
-+            text: event.message['text']
-+          }
-        end
-      end
-    end
-  end
-  ・
-  ・
-  ・
-end
-```
-
-`type`キーに`'text'`、`text`キーに送信されたメッセージそのものを示す`event.message['text']`を指定したハッシュを宣言し`message`変数に代入しました。
-
-### 返信する
-
-```diff
-class LineBotController < ApplicationController
-  protect_from_forgery except: [:callback]
-
-  def callback
-    ・
-    ・
-    ・
-    events.each do |event|
-      case event
-      when Line::Bot::Event::Message
-        case event.type
-        when Line::Bot::Event::MessageType::Text
-          message = {
-            type: 'text',
-            text: event.message['text']
+  },
+  "hotels":
+  [
+    [
+      {
+        "hotelBasicInfo":
+        {
+          "hotelNo":147784,
+          "hotelName":"東急ステイ新宿",
+          ・
+          ・
+          ・
+        }
+      }
+    ],
+    [
+      {
+        "hotelBasicInfo":
+          {
+            "hotelNo":658,
+            "hotelName":"新宿ワシントンホテル　本館",
+            ・
+            ・
+            ・
           }
+      }
+    ]
+  ]
+}
+```
+
+これをRubyで取り扱いやすくするため、`JSON.parse`メソッドを使って、ハッシュに変換しています。
+
+変換後のレスポンスを`response`に再代入しています。
+
+```
+text = ''
+response['hotels'].each do |hotel|
+  text <<
+    hotel[0]['hotelBasicInfo']['hotelName'] + "\n" +
+    hotel[0]['hotelBasicInfo']['hotelInformationUrl'] + "\n" +
+    "\n"
+end
+```
+
+## メッセージの作成
+
+今回作成したいメッセージのイメージは以下のようになります。
+
+```
+ホテル名1
+ホテル情報ページURL1
+
+ホテル名2
+ホテル情報ページURL2
+
+・
+・
+・
+```
+
+`response`は、わかりやすく今回の実装で関係する部分だけを抜粋すると、以下のような構造になっています。
+
+```
+{
+  "hotels" => [
+    [
+      {
+        "hotelBasicInfo" => {
+          "hotelName" => "東急ステイ新宿",
+          "hotelInformationUrl" => "https://xxxxx",
+        }
+      }
+    ],
+    [
+      {
+        "hotelBasicInfo" => {
+          "hotelName" => "新宿ワシントンホテル　本館",
+          "hotelInformationUrl" => "https://xxxxx",
+        }
+      }
+    ],
+    ・
+    ・
+    ・
+  ]
+}
+```
+
+`hotels`キーにそれぞれのホテル情報が配列で入っています。
+
+`hotelBasicInfo`というキーで詳細情報にアクセスできそうです。
+
+まとめると１つ目のホテルの名前には、以下のコードでアクセスできそうです。
+
+```
+response["hotels"][0][0]["hotelBasicInfo"]["hotelName"]
+```
+
+```
+response["hotels"][1][0]["hotelBasicInfo"]["hotelName"]
+```
+
+つまり、`response["hotels"]`を`each`メソッドで回すとよいことがわかります。
+
+```diff
+class LineBotController < ApplicationController
+  ・
+  ・
+  ・
+  private
+    ・
+    ・
+    ・
+    def search_and_create_message(keyword)
+      url = 'https://app.rakuten.co.jp/services/api/Travel/KeywordHotelSearch/20170426'
+      client = HTTPClient.new
+      query = { 
+        'keyword' => keyword,
+        'applicationId' => ENV['RAKUTEN_APPID'],
+        'responseType' => 'small',
+        'hits' => 5,
+        'formatVersion' => 2
+      }
+      response = client.get(url, query)
+      response = JSON.parse(response.body)
++
++      text = ''
++      response['hotels'].each do |hotel|
++        text <<
++          hotel[0]['hotelBasicInfo']['hotelName'] + "\n" +
++          hotel[0]['hotelBasicInfo']['hotelInformationUrl'] + "\n" +
++          "\n"
++      end
+    end
+end
+```
+
+String型の変数`text`を宣言します。
+
+`hotelName`と`hotelInformationUrl`の値を取り出し、文字列結合をおこなう`+`を使って結合させています。
+
+"\n"は改行です(なお、Rubyでは、'\n'のようにシングルクォーテーションで囲むと改行と認識されないので注意してください)。
+
+以下の文字列を作成しました。
+
+```
+ホテル名1
+ホテル情報ページURL1
+
+```
+
+作成した文字列は`text`へ代入しますが、`<<`を利用することで、文字列を連結しています。
+
+`each`でループするたびに以下のように文字列が連結していきます。
+
+```
+ホテル名1
+ホテル情報ページURL1
+
+ホテル名2
+ホテル情報ページURL2
+
+・
+・
+・
+```
+
+すべて連結し終わったら、返信内容のタイプとテキストを保持したハッシュを作成します。
+
+```
+message = {
+  type: 'text',
+  text: text
+}
+```
+
+`type`キーに`'text'`、`text`キーに送信されたメッセージそのものを示す`event.message['text']`を指定したハッシュを宣言し`message`変数に代入します。
+
+### メソッド呼び出す
+
+```diff
+class LineBotController < ApplicationController
+  protect_from_forgery except: [:callback]
+
+  def callback
+    ・
+    ・
+    ・
+    events.each do |event|
+      case event
+      when Line::Bot::Event::Message
+        case event.type
+        when Line::Bot::Event::MessageType::Text
+-          message = {
+-            type: 'text',
+-            text: event.message['text']
+-          }
++          message = search_and_create_message(event.message['text'])
+          client.reply_message(event['replyToken'], message)
         end
       end
-  +    client.reply_message(event['replyToken'], message)
     end
-  +  head :ok
+    head :ok
   end
   ・
   ・
@@ -462,20 +394,8 @@ class LineBotController < ApplicationController
 end
 ```
 
-```
-client.reply_message(event['replyToken'], message)
-```
+オウム返し部分を削除
 
-LINE Messaging APIでは、各メッセージに応答トークンを割り振っており、そのメッセージへの返信にこの応答トークンを必要とします。
+`search_and_create_message`メソッドにユーザーから送信されたメッセージである`event.message['text']`を渡してあげる
 
-- [Messaging APIリファレンス | LINE Developers](https://developers.line.biz/ja/reference/messaging-api/#send-reply-message)
-
-応答トークンは`event`の`replyToken`キーを参照することで取得できます。
-
-`reply_message`メソッドの第一引数に応答トークン、第二引数に先程宣言した`message`、つまり返信内容のタイプとテキストを保持したハッシュを渡すと、テキストメッセージでの返信が行われます。
-
-```
-head :ok
-```
-
-最後にステータスコードとして正常を示す`200`を表す`:ok`を指定して完了です。
+返り値は返信内容のタイプとテキストを保持したハッシュなので、それを`client.reply_message`メソッドの第二引数にそのまま渡してあげれば良い
