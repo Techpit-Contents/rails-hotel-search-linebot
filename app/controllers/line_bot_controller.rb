@@ -29,7 +29,6 @@ class LineBotController < ApplicationController
 
   private
 
-  # LINE Developers登録完了後に作成される環境変数の認証
   def client
     @client ||= Line::Bot::Client.new { |config|
       config.channel_secret = ENV['LINE_CHANNEL_SECRET']
