@@ -274,19 +274,23 @@ end
 
 `hotels`キーにそれぞれのホテル情報が配列で入っています。
 
-`hotelBasicInfo`というキーで詳細情報にアクセスできそうです。
+配列の1つ目の要素に`hotelBasicInfo`というキーをもつハッシュがあり、ホテルの詳細情報が格納されています。
 
-まとめると１つ目のホテルの名前には、以下のコードでアクセスできそうです。
+ホテル名は`hotelName`、ホテル情報ページURLは`hotelInformationUrl`というキーが割り振られています。
+
+まとめると1つ目のホテルの名前には、以下のコードでアクセスできます。
 
 ```
 response["hotels"][0][0]["hotelBasicInfo"]["hotelName"]
 ```
 
+2つ目のホテルの名前には、以下のコードでアクセスできます。
+
 ```
 response["hotels"][1][0]["hotelBasicInfo"]["hotelName"]
 ```
 
-つまり、`response["hotels"]`を`each`メソッドで回すとよいことがわかります。
+つまり`response["hotels"]`を`each`メソッドでループさせると、各ホテルの詳細情報に効率よくアクセスすることができることがわかります。
 
 ```diff
 class LineBotController < ApplicationController
@@ -362,7 +366,7 @@ message = {
 
 `type`キーに`'text'`、`text`キーに送信されたメッセージそのものを示す`event.message['text']`を指定したハッシュを宣言し`message`変数に代入します。
 
-### メソッド呼び出す
+## メソッド呼び出す
 
 ```diff
 class LineBotController < ApplicationController
@@ -399,3 +403,55 @@ end
 `search_and_create_message`メソッドにユーザーから送信されたメッセージである`event.message['text']`を渡してあげる
 
 返り値は返信内容のタイプとテキストを保持したハッシュなので、それを`client.reply_message`メソッドの第二引数にそのまま渡してあげれば良い
+
+## エラー処理
+
+検索キーワードに該当するホテルがなかった場合に返答するようにしよう
+
+```diff
+class LineBotController < ApplicationController
+  ・
+  ・
+  ・
+  private
+    ・
+    ・
+    ・
+    def search_and_create_message(keyword)
+      ・
+      ・
+      ・
+      response = client.get(url, query)
+      response = JSON.parse(response.body)
+
++      if response.key?('error')
++        text = "この検索条件に該当する宿泊施設が見つかりませんでした。\n条件を変えて再検索してください。"
++      else
+        text = ''
+        response['hotels'].each do |hotel|
+          text <<
+            hotel[0]['hotelBasicInfo']['hotelName'] + "\n" +
+            hotel[0]['hotelBasicInfo']['hotelInformationUrl'] + "\n" +
+            "\n"
+        end
++      end
+
+      message = {
+        type: 'text',
+        text: text
+      }
+    end
+end
+```
+
+検索キーワードに該当するホテルがなかった場合、以下のレスポンスが返ってくる。
+```
+{
+  "error": "not_found",
+  "error_description": "Data Not Found"
+}
+```
+
+`key?`メソッドは指定したキー名が存在した場合に`true`を返します。
+
+今回は`error`というキーが存在した場合に`text`に`この検索条件に該当する宿泊施設が見つかりませんでした。\n条件を変えて再検索してください。`というメッセージを代入しています。
