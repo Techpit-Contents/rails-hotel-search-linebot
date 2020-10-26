@@ -113,14 +113,16 @@ https://qiita.com/noraworld/items/947f6725a4d617820265
 
 `Line::Bot::Client`クラスをインスタンス化するために以下のコードを追加
 
-```
-private
-
-def client
-  @client ||= Line::Bot::Client.new { |config|
-    config.channel_secret = ENV["LINE_CHANNEL_SECRET"]
-    config.channel_token = ENV["LINE_CHANNEL_TOKEN"]
-  }
+```diff
+class LineBotController < ApplicationController
++  private
++
++    def client
++      @client ||= Line::Bot::Client.new { |config|
++        config.channel_secret = ENV["LINE_CHANNEL_SECRET"]
++        config.channel_token = ENV["LINE_CHANNEL_TOKEN"]
++      }
++    end
 end
 ```
 
@@ -138,10 +140,11 @@ end
 ```diff
 class LineBotController < ApplicationController
 +  protect_from_forgery except: [:callback]
-
-・
-・
-・
++
+  private
+  ・
+  ・
+  ・
 end
 ```
 
@@ -170,7 +173,6 @@ end
 
 ```
 class LineBotController < ApplicationController
-
   protect_from_forgery except: [:callback]
 
 +  def callback
@@ -194,7 +196,6 @@ Parameters: {"events"=>[{"type"=>"message", "replyToken"=>"xxx", "source"=>{"use
 
 ```diff
 class LineBotController < ApplicationController
-
   protect_from_forgery except: [:callback]
 
   def callback
@@ -235,7 +236,6 @@ LINEチャネルからのリクエストには署名(signature)の情報が含�
 
 ```diff
 class LineBotController < ApplicationController
-
   protect_from_forgery except: [:callback]
 
   def callback
@@ -299,7 +299,6 @@ LINE側が送ってきたメッセージが正しいか検証するための署�
 
 ```diff
 class LineBotController < ApplicationController
-
   protect_from_forgery except: [:callback]
 
   def callback
@@ -308,7 +307,6 @@ class LineBotController < ApplicationController
     unless client.validate_signature(body, signature)
       error 400 do 'Bad Request' end
     end
-
 +    events = client.parse_events_from(body)
   end
 
@@ -336,7 +334,6 @@ class LineBotController < ApplicationController
     ・
     ・
     events = client.parse_events_from(body)
-
 +    events.each do |event|
 +      case event
 +      when Line::Bot::Event::Message
@@ -407,14 +404,12 @@ end
 
 ```diff
 class LineBotController < ApplicationController
-
   protect_from_forgery except: [:callback]
 
   def callback
     ・
     ・
     ・
-
     events.each do |event|
       case event
       when Line::Bot::Event::Message
@@ -428,7 +423,6 @@ class LineBotController < ApplicationController
       end
     end
   end
-
   ・
   ・
   ・
@@ -441,14 +435,12 @@ end
 
 ```diff
 class LineBotController < ApplicationController
-
   protect_from_forgery except: [:callback]
 
   def callback
     ・
     ・
     ・
-
     events.each do |event|
       case event
       when Line::Bot::Event::Message
@@ -464,7 +456,6 @@ class LineBotController < ApplicationController
     end
   +  head :ok
   end
-
   ・
   ・
   ・

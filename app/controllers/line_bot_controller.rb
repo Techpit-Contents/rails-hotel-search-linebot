@@ -1,5 +1,4 @@
 class LineBotController < ApplicationController
-
   protect_from_forgery except: [:callback]
 
   def callback
@@ -8,9 +7,7 @@ class LineBotController < ApplicationController
     unless client.validate_signature(body, signature)
       return head :bad_request
     end
-
     events = client.parse_events_from(body)
-
     events.each do |event|
       case event
       when Line::Bot::Event::Message
@@ -29,10 +26,10 @@ class LineBotController < ApplicationController
 
   private
 
-  def client
-    @client ||= Line::Bot::Client.new { |config|
-      config.channel_secret = ENV['LINE_CHANNEL_SECRET']
-      config.channel_token = ENV['LINE_CHANNEL_TOKEN']
-    }
-  end
+    def client
+      @client ||= Line::Bot::Client.new { |config|
+        config.channel_secret = ENV['LINE_CHANNEL_SECRET']
+        config.channel_token = ENV['LINE_CHANNEL_TOKEN']
+      }
+    end
 end
