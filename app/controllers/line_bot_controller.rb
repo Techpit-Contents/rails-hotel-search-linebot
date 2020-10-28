@@ -58,7 +58,7 @@ class LineBotController < ApplicationController
     def make_reply_content(hotels)
       contents = []
       hotels.each do |hotel|
-        contents.push make_block(hotel[0]['hotelBasicInfo'])
+        contents.push set_bubble(hotel[0]['hotelBasicInfo'])
       end
       {
         "type": 'flex',
