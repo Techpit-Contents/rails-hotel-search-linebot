@@ -174,7 +174,7 @@ class LineBotController < ApplicationController
             "height": "sm",
             "action": {
               "type": "uri",
-              "label": "電話する",
+              "label": "電話をする",
               "uri": "tel:" + hotel['telephoneNo']
             }
           },
