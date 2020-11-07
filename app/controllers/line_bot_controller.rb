@@ -31,16 +31,16 @@ class LineBotController < ApplicationController
     end
 
     def search_and_create_message(keyword)
+      http_client = HTTPClient.new
       url = 'https://app.rakuten.co.jp/services/api/Travel/KeywordHotelSearch/20170426'
-      client = HTTPClient.new
       query = { 
         'keyword' => keyword,
         'applicationId' => ENV['RAKUTEN_APPID'],
-        'responseType' => 'small',
         'hits' => 5,
+        'responseType' => 'small',
         'formatVersion' => 2
       }
-      response = client.get(url, query)
+      response = http_client.get(url, query)
       response = JSON.parse(response.body)
 
       if response.key?('error')
