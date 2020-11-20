@@ -11,4 +11,4 @@
 
 - [5章完了](https://github.com/Techpit-Contents/rails-hotel-search-linebot/tree/chapter-5) 
 
-- [6章完了](https://github.com/Techpit-Contents/rails-hotel-search-linebot/) 
+- [6章完了(本ブランチ)](https://github.com/Techpit-Contents/rails-hotel-search-linebot/) 
